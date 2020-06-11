@@ -1,79 +1,53 @@
-"use strict";
-
-var express = require("express");
-const dns = require("dns");
+const express = require("express");
+const app = express();
 const bodyParser = require("body-parser");
 
-var cors = require("cors");
+const cors = require("cors");
 
-var app = express();
+const mongoose = require("mongoose");
+mongoose.connect(
+  /* process.env.MLAB_URI || */ "mongodb://localhost:27017/fcc4",
+  { useNewUrlParser: true, useUnifiedTopology: true }
+);
 
-// Basic Configuration
-var port = process.env.PORT || 3000;
+const db = mongoose.connection;
 
-/** this project needs a db !! **/
-
-// mongoose.connect(process.env.DB_URI);
+User = mongoose.model("users", new mongoose.Schema({ username: String }));
+User.find({}, (err, res) => console.log(res));
 
 app.use(cors());
 
 app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
 
-/** this project needs to parse POST bodies **/
-// you should mount the body-parser here
-
-app.use("/public", express.static(process.cwd() + "/public"));
-
-app.get("/", function (req, res) {
-  res.sendFile(process.cwd() + "/views/index.html");
+app.use(express.static("public"));
+app.get("/", (req, res) => {
+  res.sendFile(__dirname + "/views/index.html");
 });
 
-// your first API endpoint...
-app.get("/api/hello", function (req, res) {
-  res.json({ greeting: "hello API" });
+// Not found middleware
+app.use((req, res, next) => {
+  return next({ status: 404, message: "not found" });
 });
 
-const ar = [];
+// Error Handling middleware
+app.use((err, req, res, next) => {
+  let errCode, errMessage;
 
-app.get("/api/shorturl/:x", (req, res) => {
-  const { x } = req.params;
-  const num = parseInt(x);
-  if (isNaN(num) || num === 0) {
-    res.json({ error: "Wrong format" });
+  if (err.errors) {
+    // mongoose validation error
+    errCode = 400; // bad request
+    const keys = Object.keys(err.errors);
+    // report the first validation error
+    errMessage = err.errors[keys[0]].message;
   } else {
-    if (num <= ar.length) {
-      res.redirect(ar[num - 1]);
-    } else {
-      res.json({ error: "No short URL found for the given input" });
-    }
+    // generic or custom error
+    errCode = err.status || 500;
+    errMessage = err.message || "Internal Server Error";
   }
-  console.log(num);
+  res.status(errCode).type("txt").send(errMessage);
 });
 
-app.post("/api/shorturl/new", (req, res) => {
-  const { url } = req.body;
-  console.log(url);
-  const index = ar.indexOf(url);
-  if (index !== -1) {
-    res.json({ original_url: ar[index], short_url: index + 1 });
-  } else {
-    const urlReg = new RegExp(/^https?:\/\/www\.(\w+)(\.[a-z]+)+(\/(\w+)*)*/i);
-    if (urlReg.test(url)) {
-      ar.push(url);
-      res.json({ original_url: url, short_url: ar.length });
-    } else {
-      res.json({ error: "invalid URL" });
-    }
-    // dns.lookup("url", (err, address, family) => {
-    //   if (err) console.log(err);
-    //   else {
-    //     console.log(address);
-    //     console.log(family);
-    //   }
-    // });
-  }
-});
-
-app.listen(port, function () {
-  console.log("Node.js listening ...");
+const listener = app.listen(process.env.PORT || 3000, () => {
+  console.log("Your app is listening on port " + listener.address().port);
 });
