@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require("express");
 const app = express();
 const bodyParser = require("body-parser");
@@ -6,10 +7,10 @@ const shortid = require("shortid");
 const cors = require("cors");
 
 const mongoose = require("mongoose");
-mongoose.connect(
-  /* process.env.MLAB_URI || */ "mongodb://localhost:27017/fcc4",
-  { useNewUrlParser: true, useUnifiedTopology: true }
-);
+mongoose.connect(process.env.URI || "mongodb://localhost:27017/fcc4", {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
 
 const db = mongoose.connection;
 
