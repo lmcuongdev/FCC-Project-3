@@ -13,6 +13,14 @@ mongoose.connect(
 
 const db = mongoose.connection;
 
+const compareDate = (d1, d2) => {
+  return (
+    d1.getFullYear() - d2.getFullYear() ||
+    d1.getMonth() - d2.getMonth() ||
+    d1.getDate() - d2.getDate()
+  );
+};
+
 User = mongoose.model(
   "users",
   new mongoose.Schema(
@@ -110,17 +118,37 @@ app.post("/api/exercise/add", (req, res) => {
 
 app.get("/api/exercise/log", (req, res) => {
   console.log(req.query);
-  const { userId, from, to, limit } = req.query;
+  const { userId } = req.query;
+  // validate from, to, limit argument
+  let tempFrom = new Date(req.query.from);
+  const from = tempFrom.toString() === "Invalid Date" ? new Date(0) : tempFrom;
+  let tempTo = new Date(req.query.to);
+  const to = tempTo.toString() === "Invalid Date" ? new Date() : tempTo;
+  const limit = Number(req.query.limit) ? Number(req.query.limit) : Infinity;
+
+  console.log(from, to, limit);
+  // find that user
   const idValidate = { _id: userId };
   User.findOne(idValidate).then((user) => {
     if (!user) return res.send("userId not exist");
-    const log = user.log.map((ex) => ({
-      ...ex.toObject(),
-      date: ex.date.toDateString(),
-    }));
+    const log = user.log
+      .filter(
+        (ex) => compareDate(ex.date, from) >= 0 && compareDate(ex.date, to) <= 0
+      )
+      .splice(0, limit)
+      .map((ex) => ({
+        ...ex.toObject(),
+        date: ex.date.toDateString(),
+      }));
+    console.log(log);
     const response = {
       userId,
       username: user.username,
+      from:
+        tempFrom.toString() === "Invalid Date"
+          ? undefined
+          : from.toDateString(),
+      to: tempTo.toString() === "Invalid Date" ? undefined : to.toDateString(),
       count: user.log.length,
       log,
     };
