@@ -103,7 +103,7 @@ app.post("/api/exercise/add", (req, res) => {
       User.updateOne(idValidate, { log: updatedLog }).then((result) => {
         console.log("Updated");
         res.json({
-          userId,
+          _id: userId,
           ...info,
           date: info.date.toDateString(),
           username: user.username,
